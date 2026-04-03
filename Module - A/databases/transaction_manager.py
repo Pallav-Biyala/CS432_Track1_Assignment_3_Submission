@@ -1,0 +1,95 @@
+# Building transaction manager class
+from databases.wal import WAL
+
+class Transaction_Manager:
+    # Keeping track of transactions
+    def __init__(self,db_manager, checkpoint_threshold=6):
+        self.db = db_manager
+        self.operation_stack = {}
+        self.transaction_counter = 0
+        # This is used so that we can save the database to disk in case if crashed we need to recover it
+        self.checkpoint_threshold = checkpoint_threshold
+        self.commit_count = 0  # Track successful commits
+        
+        self.wal = WAL() # storing the logs in case of crash 
+        self.wal.recover(self.db) # Adding auto reocvery so that every time a transaction is created, it recovers all past transactions
+
+    # Begin transaction
+    def begin(self):
+        self.transaction_counter += 1
+        tid = self.transaction_counter
+
+        # creating stack of operations
+        self.operation_stack[tid] = []
+
+        # Beginning the log
+        self.wal.log_begin(tid)
+
+        print(f"Transaction {tid} started")
+        return tid
+    
+    # Log operation: storing operations
+    def log_operation(self, tid, operation):
+        if tid not in self.operation_stack:
+            print("Transaction not active")
+            return
+        
+        self.wal.log_operation(
+            tid,
+            operation.table.name,
+            operation.op_type,
+            operation.key,
+            operation.old_value,
+            operation.new_value
+        )
+        self.operation_stack[tid].append(operation)
+
+    # Commit
+    def commit(self, tid):
+        if tid not in self.operation_stack:
+            print("Transaction not active")
+            return
+
+        # We log commit first before performing operations. Write ahead logging
+        self.wal.log_commit(tid)
+        
+        # now we can apply staged operations now
+        for op in self.operation_stack[tid]:
+            op.perform()
+        
+        print(f"Transaction {tid} committed")
+        
+        del self.operation_stack[tid]
+
+        # Automatic Checkpoint Logic
+        self.commit_count += 1
+        if self.commit_count >= self.checkpoint_threshold:
+            print(f"\n--- Auto-Checkpoint: {self.commit_count} commits reached ---")
+            self.checkpoint()
+
+    # Rollback
+    def rollback(self, tid):
+        if tid not in self.operation_stack:
+            print("Transaction not active")
+            return
+    
+        print(f"Rolling back transaction {tid}")
+
+        stack = self.operation_stack[tid]
+
+        while stack:
+            op = stack.pop()
+            op.undo()
+
+        del self.operation_stack[tid] # rollback so removing it 
+
+    def active(self):
+        print("Active transactions:", list(self.operation_stack.keys()))
+
+    # Saving automatically on disk
+    def checkpoint(self):
+        # Syncs the B+ Tree to system_data.db and clears the WAL.
+        self.db.save_to_disk() # Long-term storage
+        self.wal.reset()       # Clear short-term log
+        self.commit_count = 0  # Reset counter
+        print("System synced. WAL truncated.\n")
