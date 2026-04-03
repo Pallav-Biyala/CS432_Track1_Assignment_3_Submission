@@ -7,22 +7,17 @@ The goal of this module is not to build a full production database engine, but t
 ---
 
 ## Project Structure
-Module - A/<br>
-│
-├── databases/<br>
-│   ├── `__init__.py`<br>
-│   ├── `bplustree.py`<br>
-│   ├── `table.py`<br>
-│   ├── `transaction_manager.py`<br>
-│   ├── `wal.py`<br>
-│   ├── `db_manager.py`<br>
-│   ├── `operations.py`<br>
-│
-├── B+ Tree ACID Testing Report.html<br>
-│
-├── B+ Tree ACID Testing Report.ipynb<br>
-|
-└── README.md
+Module_A/<br>
+├── databases/                     <br>
+│   ├──` __init__.py`              <br>
+│   ├── `bplustree.py`             <br>
+│   └── `table.py`                 <br>
+│   └── `db_manager.py`            <br>
+│   └── `operations.py`                 <br>
+│   └── `transaction_manager.py`  <br>
+│   └── `wal.py`            <br>
+├──  `B+ Tree ACID Testing Report.ipynb`                <br>
+└──  `B+ Tree ACID Testing Report.html`                <br>
 
 --- 
 
